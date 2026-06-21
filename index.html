@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DomainScope — Bulk Domain Availability Checker</title>
+<meta name="description" content="Check thousands of domains at once. Dual-verified with DNS + RDAP so a registered domain is never shown as available.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05130d; --bg2:#07271a; --panel:rgba(255,255,255,.04); --panel-solid:#0c2218;
+    --line:rgba(52,211,153,.14); --line-strong:rgba(52,211,153,.30);
+    --txt:#eafff5; --mut:#8fb3a4; --faint:#5d7d70;
+    --em:#10b981; --em2:#34d399; --em3:#6ee7b7; --emdark:#059669;
+    --green:#34d399; --red:#fb7185; --yellow:#fbbf24; --grey:#7d9b8d;
+    --glow:0 0 40px rgba(16,185,129,.35);
+    --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;color:var(--txt);font-family:Inter,system-ui,Segoe UI,sans-serif;
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(16,185,129,.18), transparent 60%),
+      radial-gradient(700px 500px at 5% 0%, rgba(5,150,105,.16), transparent 55%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    background-attachment:fixed;min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 22px 60px}
+
+  /* ---- top bar ---- */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:46px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+  .logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--em2),var(--emdark));box-shadow:var(--glow);color:#04140d}
+  .logo svg{width:19px;height:19px}
+  .brand b{background:linear-gradient(90deg,#fff,var(--em3));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .ghlink{display:flex;gap:7px;align-items:center;color:var(--mut);text-decoration:none;font-size:13px;font-weight:500;
+    border:1px solid var(--line);padding:8px 13px;border-radius:9px;transition:.2s}
+  .ghlink:hover{color:var(--txt);border-color:var(--line-strong);background:var(--panel)}
+
+  /* ---- hero ---- */
+  .hero{text-align:center;margin-bottom:34px}
+  .badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--em3);
+    background:rgba(16,185,129,.1);border:1px solid var(--line-strong);padding:6px 13px;border-radius:999px;margin-bottom:18px}
+  .badge .pulse{width:7px;height:7px;border-radius:50%;background:var(--em2);box-shadow:0 0 0 0 rgba(52,211,153,.7);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  h1{font-size:clamp(30px,5vw,50px);line-height:1.05;margin:0 0 14px;font-weight:800;letter-spacing:-.03em}
+  h1 .grad{background:linear-gradient(120deg,var(--em3) 0%,var(--em2) 50%,var(--emdark) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--mut);font-size:clamp(15px,2vw,17px);max-width:620px;margin:0 auto;line-height:1.6}
+
+  /* ---- card / panel ---- */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
+  .card.glow{position:relative;overflow:hidden}
+  .card.glow::before{content:"";position:absolute;inset:0;border-radius:18px;padding:1px;
+    background:linear-gradient(120deg,transparent,rgba(52,211,153,.4),transparent);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6}
+
+  .field-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  .field-label span{font-size:13px;font-weight:600;color:var(--mut)}
+  .field-label em{font-style:normal;font-size:12px;color:var(--faint)}
+  textarea{width:100%;min-height:150px;background:rgba(0,0,0,.25);color:var(--txt);
+    border:1px solid var(--line);border-radius:12px;padding:14px;font-family:var(--mono);font-size:13px;line-height:1.6;resize:vertical;transition:.2s}
+  textarea:focus{outline:none;border-color:var(--em);box-shadow:0 0 0 3px rgba(16,185,129,.15)}
+  textarea::placeholder{color:var(--faint)}
+
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:11px;padding:12px 22px;
+    font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:.18s;letter-spacing:-.01em}
+  .btn-primary{color:#04140d;background:linear-gradient(135deg,var(--em3),var(--em),var(--emdark));box-shadow:0 8px 24px -6px rgba(16,185,129,.6)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 12px 30px -6px rgba(16,185,129,.75)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-ghost{background:var(--panel);border:1px solid var(--line);color:var(--txt)}
+  .btn-ghost:hover{border-color:var(--line-strong);background:rgba(255,255,255,.06)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+  .conc{margin-left:auto;display:flex;gap:8px;align-items:center;color:var(--faint);font-size:13px}
+  .conc input{width:66px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px;font-family:var(--mono);text-align:center}
+  #prog{color:var(--em3);font-family:var(--mono);font-size:13px;font-weight:500}
+
+  .bar{height:6px;background:rgba(0,0,0,.3);border-radius:6px;overflow:hidden;margin-top:16px;display:none}
+  .bar>i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--em),var(--em3));transition:width .25s;box-shadow:var(--glow)}
+
+  /* ---- stats ---- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0 6px;display:none}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;transition:.18s;text-align:left}
+  .stat:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+  .stat.on{border-color:var(--line-strong);box-shadow:0 0 0 1px var(--line-strong),0 10px 30px -12px rgba(16,185,129,.4)}
+  .stat .n{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .stat .l{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut);margin-top:8px;font-weight:500}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .bg-AVAILABLE{background:var(--green)} .bg-TAKEN{background:var(--red)} .bg-LIKELY{background:var(--yellow)} .bg-UNKNOWN{background:var(--grey)} .bg-ALL{background:var(--em2)}
+  .n.AVAILABLE{color:var(--green)} .n.TAKEN{color:var(--red)} .n.LIKELY{color:var(--yellow)} .n.UNKNOWN{color:var(--grey)} .n.ALL{color:var(--em2)}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin:18px 0 0;display:none}
+  .toolbar .sp{flex:1}
+
+  /* ---- table ---- */
+  .tablewrap{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none}
+  table{width:100%;border-collapse:collapse}
+  thead th{text-align:left;padding:13px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--faint);font-weight:700;background:rgba(0,0,0,.25)}
+  tbody td{padding:13px 16px;border-top:1px solid var(--line);font-size:14px}
+  tbody tr{transition:background .15s}
+  tbody tr:hover{background:rgba(16,185,129,.05)}
+  td.domain{font-family:var(--mono);font-size:13px}
+  td.status{font-weight:700}
+  .tag{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.01em}
+  .tag.AVAILABLE{color:var(--green);background:rgba(52,211,153,.12)}
+  .tag.TAKEN{color:var(--red);background:rgba(251,113,133,.12)}
+  .tag.LIKELY{color:var(--yellow);background:rgba(251,191,36,.12)}
+  .tag.UNKNOWN{color:var(--grey);background:rgba(125,155,141,.12)}
+  td.det{color:var(--faint);font-family:var(--mono);font-size:12px}
+
+  .empty{padding:50px 20px;text-align:center;color:var(--faint)}
+  .legend{margin-top:24px;color:var(--faint);font-size:12.5px;line-height:1.9;text-align:center}
+  .legend b{color:var(--mut)}
+  .legend .k{color:var(--em3);font-weight:600}
+  footer{margin-top:40px;text-align:center;color:var(--faint);font-size:12px}
+  footer a{color:var(--mut);text-decoration:none}
+  footer a:hover{color:var(--em3)}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.conc{margin-left:0;width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+      Domain<b>Scope</b>
+    </div>
+    <a class="ghlink" id="ghlink" href="#" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.7 2.7 1.2 3.3.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5Z"/></svg>
+      GitHub
+    </a>
+  </div>
+
+  <div class="hero">
+    <span class="badge"><span class="pulse"></span> Dual-verified · DNS + RDAP</span>
+    <h1>Check domains <span class="grad">in bulk</span>,<br>trust every result.</h1>
+    <p class="lead">Paste thousands of domains at once. Each one is cross-checked against live DNS delegation and the registry's RDAP — so a registered domain is <b>never</b> shown as available.</p>
+  </div>
+
+  <div class="card glow">
+    <div class="field-label">
+      <span>Your domain list</span>
+      <em>newlines, commas, spaces, https:// and www. all handled · duplicates removed</em>
+    </div>
+    <textarea id="in" placeholder="example.com&#10;openai.io&#10;my-startup-idea.dev, another-name.net&#10;https://www.something.org"></textarea>
+    <div class="row">
+      <button class="btn btn-primary" id="go">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Check domains
+      </button>
+      <button class="btn btn-ghost" id="clear">Clear</button>
+      <span class="conc">concurrency <input id="conc" type="number" min="1" max="20" value="8"></span>
+      <span id="prog"></span>
+    </div>
+    <div class="bar" id="bar"><i></i></div>
+  </div>
+
+  <div class="stats" id="stats">
+    <button class="stat on" data-f="ALL"><div class="n ALL" id="c-ALL">0</div><div class="l"><span class="dot bg-ALL"></span>Total</div></button>
+    <button class="stat" data-f="AVAILABLE"><div class="n AVAILABLE" id="c-AVAILABLE">0</div><div class="l"><span class="dot bg-AVAILABLE"></span>Available</div></button>
+    <button class="stat" data-f="TAKEN"><div class="n TAKEN" id="c-TAKEN">0</div><div class="l"><span class="dot bg-TAKEN"></span>Taken</div></button>
+    <button class="stat" data-f="LIKELY"><div class="n LIKELY" id="c-LIKELY">0</div><div class="l"><span class="dot bg-LIKELY"></span>Likely free</div></button>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <span class="sp"></span>
+    <button class="btn btn-ghost" id="copyAvail">Copy available</button>
+    <button class="btn btn-ghost" id="csv">Download CSV</button>
+  </div>
+
+  <div class="tablewrap" id="tablewrap">
+    <table>
+      <thead><tr><th>Domain</th><th>Status</th><th>Detail</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <p class="legend">
+    <span class="k">AVAILABLE</span> = RDAP 404 + no DNS delegation (proven free) &nbsp;·&nbsp;
+    <span class="k">TAKEN</span> = delegated or registry says registered &nbsp;·&nbsp;
+    <span class="k">LIKELY FREE</span> = TLD has no RDAP but not in DNS (strong, unproven) &nbsp;·&nbsp;
+    <span class="k">UNKNOWN</span> = couldn't confirm
+  </p>
+
+  <footer>
+    Runs entirely in your browser · no server, no tracking · powered by Google DNS-over-HTTPS &amp; IANA RDAP
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let RDAP = null, results = [], filter = 'ALL';
+
+async function loadBootstrap(){
+  if (RDAP) return RDAP;
+  RDAP = {};
+  try{
+    const j = await (await fetch('https://data.iana.org/rdap/dns.json')).json();
+    for (const svc of j.services){
+      let base = svc[1].find(u=>u.startsWith('https'))||svc[1][0];
+      if(base && !base.endsWith('/')) base += '/';
+      for (const t of svc[0]) RDAP[t.toLowerCase()] = base;
+    }
+  }catch(e){}
+  return RDAP;
+}
+
+function parse(text){
+  return [...new Set(
+    text.split(/[\s,;]+/)
+        .map(s=>s.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,''))
+        .filter(s=>/^[a-z0-9.-]+\.[a-z]{2,}$/.test(s))
+  )];
+}
+
+async function dnsHasNS(domain){
+  try{
+    const j = await (await fetch('https://dns.google/resolve?name='+encodeURIComponent(domain)+'&type=NS')).json();
+    if (j.Status === 3) return false;
+    const recs = [...(j.Answer||[]), ...(j.Authority||[])];
+    if (recs.some(x=>x.type===2)) return true;
+    if (j.Status === 0) return false;
+    return null;
+  }catch(e){ return null; }
+}
+
+async function rdapStatus(domain){
+  const base = RDAP[domain.split('.').pop()];
+  if (!base) return 'norDAP';
+  try{
+    const r = await fetch(base+'domain/'+encodeURIComponent(domain));
+    if (r.status === 200) return 'taken';
+    if (r.status === 404) return 'free';
+    return 'unknown';
+  }catch(e){ return 'unknown'; }
+}
+
+async function check(domain){
+  const [hasNS, rdap] = await Promise.all([dnsHasNS(domain), rdapStatus(domain)]);
+  const tld = domain.split('.').pop();
+  if (hasNS === true)                       return {domain, status:'TAKEN',     detail:'ns-delegated'};
+  if (rdap === 'taken')                     return {domain, status:'TAKEN',     detail:'rdap'};
+  if (rdap === 'free' && hasNS === false)   return {domain, status:'AVAILABLE', detail:'rdap+dns confirmed'};
+  if (rdap === 'free' && hasNS === null)    return {domain, status:'UNKNOWN',   detail:'rdap free, dns inconclusive'};
+  if (rdap === 'norDAP' && hasNS === false) return {domain, status:'LIKELY',    detail:'no rdap for .'+tld+', not in dns'};
+  if (rdap === 'norDAP')                    return {domain, status:'UNKNOWN',   detail:'no rdap for .'+tld};
+  return {domain, status:'UNKNOWN', detail:'unresolved'};
+}
+
+async function run(domains, conc, onProgress){
+  const out = new Array(domains.length);
+  let i = 0, done = 0;
+  async function worker(){
+    while (i < domains.length){
+      const idx = i++;
+      out[idx] = await check(domains[idx]);
+      onProgress(++done, domains.length);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(conc,domains.length)}, worker));
+  return out;
+}
+
+function render(){
+  const tb = $('#tbody'); tb.innerHTML='';
+  const rows = results.filter(r=> filter==='ALL' || r.status===filter)
+    .sort((a,b)=>{const o={AVAILABLE:0,LIKELY:1,TAKEN:2,UNKNOWN:3};return (o[a.status]-o[b.status])||a.domain.localeCompare(b.domain);});
+  if (!rows.length){
+    tb.innerHTML = `<tr><td colspan="3"><div class="empty">No domains in this filter.</div></td></tr>`;
+  } else for (const r of rows){
+    const label = r.status==='LIKELY'?'LIKELY FREE':r.status;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="domain">${r.domain}</td>
+      <td class="status"><span class="tag ${r.status}"><span class="dot bg-${r.status}"></span>${label}</span></td>
+      <td class="det">${r.detail}</td>`;
+    tb.appendChild(tr);
+  }
+  const by = s => results.filter(r=>r.status===s).length;
+  $('#c-ALL').textContent = results.length;
+  ['AVAILABLE','TAKEN','LIKELY'].forEach(s=> $('#c-'+s).textContent = by(s));
+  const show = results.length>0;
+  $('#stats').style.display = show?'grid':'none';
+  $('#toolbar').style.display = show?'flex':'none';
+  $('#tablewrap').style.display = show?'block':'none';
+}
+
+$('#go').onclick = async () => {
+  const domains = parse($('#in').value);
+  if (!domains.length){ alert('No valid domains found. Paste a list like example.com, foo.net'); return; }
+  await loadBootstrap();
+  const conc = Math.max(1, Math.min(20, +$('#conc').value||8));
+  $('#go').disabled = true; $('#bar').style.display='block'; $('#bar>i').style.width='0%';
+  results = await run(domains, conc, (d,t)=>{ $('#prog').textContent = d+' / '+t; $('#bar>i').style.width=(d/t*100)+'%'; });
+  $('#go').disabled = false; setTimeout(()=>{$('#bar').style.display='none';},500);
+  render();
+};
+$('#clear').onclick = ()=>{ $('#in').value=''; results=[]; render(); $('#prog').textContent=''; };
+$('#stats').onclick = e=>{
+  const s = e.target.closest('.stat'); if(!s) return;
+  filter = s.dataset.f;
+  document.querySelectorAll('.stat').forEach(x=>x.classList.toggle('on', x===s));
+  render();
+};
+$('#csv').onclick = ()=>{
+  const rows = [['domain','status','detail'], ...results.map(r=>[r.domain, r.status==='LIKELY'?'LIKELY_FREE':r.status, r.detail])];
+  const csv = rows.map(r=>r.map(c=>`"${(''+c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='domain-results.csv'; a.click();
+};
+$('#copyAvail').onclick = ()=>{
+  const list = results.filter(r=>r.status==='AVAILABLE').map(r=>r.domain).join('\n');
+  if(!list){ return; }
+  navigator.clipboard.writeText(list);
+  const b=$('#copyAvail'); b.textContent='Copied!'; setTimeout(()=>b.textContent='Copy available',1200);
+};
+</script>
+</body>
+</html>
